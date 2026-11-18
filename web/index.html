@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Compare o lucro líquido de flips e receitas no Grand Exchange do RS3.">
+  <title>Merch RS3 · Grand Exchange</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+  <script src="./board.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="shell top-inner">
+      <a class="brand" href="#visao" aria-label="Merch RS3, visão geral">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Merch <strong>RS3</strong></span>
+      </a>
+      <nav aria-label="Painel">
+        <a href="#visao" data-view="visao" aria-current="page">Visão geral</a>
+        <a href="#mercado" data-view="mercado">Flip</a>
+        <a href="#crafting" data-view="crafting">Crafting</a>
+        <a href="#ofertas" data-view="ofertas">Ofertas</a>
+        <a href="#historico" data-view="historico">Histórico</a>
+      </nav>
+      <button class="button quiet top-settings" type="button" id="open-settings">Configurações</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">RuneScape 3 / Grand Exchange</p>
+        <h1 id="page-title">Oportunidades no GE</h1>
+        <p id="page-description">Veja quanto cada operação pode render depois da tarifa.</p>
+      </div>
+      <div class="heading-actions">
+        <button class="button secondary" type="button" id="open-calculator">Calculadora</button>
+        <button class="button primary" type="button" id="new-offer">+ Registrar oferta</button>
+      </div>
+    </section>
+
+    <section class="metrics" id="account-metrics" aria-label="Resumo do capital" hidden>
+      <article><p>Caixa livre</p><strong id="available">—</strong><small id="capital-label">Capital inicial</small></article>
+      <article><p>Capital reservado</p><strong id="reserved">—</strong><small id="due-label">Em ofertas de compra</small></article>
+      <article><p>Estoque ao custo</p><strong id="stock">—</strong><small id="stock-label">Itens comprados</small></article>
+      <article class="profit-card"><p>Lucro realizado</p><strong id="profit">—</strong><small>Líquido após a tarifa do GE</small></article>
+    </section>
+
+    <section id="decision-board" aria-label="Planejamento de operações">
+      <div class="decision-bar">
+        <div class="budget-overview">
+          <p id="budget-caption" class="budget-caption" aria-live="polite"></p>
+          <button class="button secondary small mobile-budget-toggle" id="toggle-budget"
+            type="button" aria-expanded="false" aria-controls="budget-form">Editar orçamento</button>
+        </div>
+        <form id="budget-form" aria-label="Simular orçamento">
+          <label>Orçamento<input id="plan-budget" name="budget" inputmode="text"
+            maxlength="30" value="1B" placeholder="Ex. 1,5B ou 300M" required></label>
+          <label>Teto por operação (%)<input id="plan-allocation" name="allocation" type="number"
+            min="1" max="100" value="20" required></label>
+          <button class="button secondary" type="submit">Simular</button>
+          <button class="button quiet" id="use-cash" type="button" hidden>Usar caixa registrado</button>
+        </form>
+        <div class="market-sync">
+          <span class="status" id="decision-status" role="status">Consultando o GE</span>
+          <button class="button quiet small" id="decision-refresh" type="button">Atualizar dados</button>
+        </div>
+      </div>
+      <p id="decision-error" class="notice" role="alert" hidden></p>
+      <section class="panel round-panel" id="decision-round" aria-labelledby="round-title" hidden>
+        <div class="round-head">
+          <div class="round-return">
+            <h2 id="round-title">Rodada sugerida</h2>
+            <strong id="round-profit"></strong>
+            <p>Lucro líquido se todas as vendas executarem no alvo</p>
+          </div>
+          <div class="round-totals" id="round-totals"></div>
+        </div>
+        <details id="round-details" class="round-details">
+          <summary id="round-summary">Ver operações da rodada</summary>
+          <p id="round-assumptions" class="round-assumptions"></p>
+          <div id="round-operations"></div>
+        </details>
+        <p id="round-note" class="round-note" hidden></p>
+      </section>
+      <div id="decision-overview" class="decision-overview" aria-live="polite"></div>
+      <section class="panel decision-list" id="decision-list" aria-labelledby="decision-list-title" hidden>
+        <div class="panel-head">
+          <div><h2 id="decision-list-title">Opções do mercado</h2><p id="decision-list-copy"></p></div>
+          <div class="decision-filters">
+            <label><span class="sr-only">Buscar operação</span><input id="decision-search" type="search" placeholder="Buscar item ou receita"></label>
+            <label><span class="sr-only">Filtrar opções</span><select id="decision-filter">
+              <option value="positive">Com lucro estimado</option>
+              <option value="ready">Com lote sugerido</option>
+              <option value="all">Todas as opções</option>
+            </select></label>
+            <label><span class="sr-only">Ordenar opções</span><select id="decision-sort">
+              <option value="profit">Maior lucro</option>
+              <option value="stress">Lucro com saída −2%</option>
+              <option value="roi">Maior retorno</option>
+              <option value="cost">Menor capital aplicado</option>
+            </select></label>
+          </div>
+        </div>
+        <div id="decision-rows" aria-live="polite"></div>
+        <div class="table-footer">
+          <span id="decision-count" aria-live="polite"></span>
+          <div class="pager">
+            <button class="button secondary small" id="decision-prev" type="button">Anterior</button>
+            <button class="button secondary small" id="decision-next" type="button">Próxima</button>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" id="mercado" aria-labelledby="scanner-heading" hidden>
+      <details id="legacy-details">
+       <summary>Catálogo completo e favoritos</summary>
+      <div class="panel-head">
+        <div><h2 id="scanner-heading">Catálogo do GE</h2><p>Consulte todos os itens e seus favoritos.</p></div>
+        <div class="feed-actions">
+          <span id="feed-status" class="status"><span class="dot"></span> Sincronizando</span>
+          <button class="button secondary small" id="refresh-market" type="button">Atualizar</button>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="segments" aria-label="Visualização do mercado">
+          <button class="segment" data-mode="eligible" aria-pressed="true" type="button">Oportunidades</button>
+          <button class="segment" data-mode="all" aria-pressed="false" type="button">Todos os itens</button>
+          <button class="segment" data-mode="watch" aria-pressed="false" type="button">Favoritos</button>
+        </div>
+        <div class="filters">
+          <label class="search"><span class="sr-only">Buscar item</span><input id="search" type="search" placeholder="Buscar item ou ID" autocomplete="off"></label>
+          <label><span class="sr-only">Perfil do item</span><select id="membership"><option value="all">F2P e P2P</option><option value="free">Só F2P</option><option value="members">Só P2P</option></select></label>
+          <label><span class="sr-only">Ordenar itens</span><select id="sort"><option value="profit">Maior lucro</option><option value="roi">Maior retorno</option><option value="volume">Maior volume</option><option value="name">Nome A–Z</option></select></label>
+        </div>
+      </div>
+      <div id="market-empty" class="empty" role="status">Consultando o mercado do RS3…</div>
+      <div id="market-table-wrap" class="table-wrap" hidden>
+        <table>
+          <thead><tr><th scope="col">Item</th><th scope="col">Entrada</th><th scope="col">Saída</th><th scope="col">Qtd. sugerida</th><th scope="col">Lucro est.</th><th scope="col">Retorno</th><th scope="col">Sinal</th><th scope="col"><span class="sr-only">Detalhes</span></th></tr></thead>
+          <tbody id="market-rows"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="market-count" aria-live="polite">RuneScape Wiki · mercado principal</span>
+        <div class="pager"><button id="prev" class="button secondary small" type="button" disabled>Anterior</button><button id="next" class="button secondary small" type="button" disabled>Próxima</button></div>
+      </div>
+      </details>
+    </section>
+
+    <section class="panel" id="ofertas" aria-labelledby="offers-heading" hidden>
+      <div class="panel-head">
+        <div><h2 id="offers-heading">Ofertas no GE</h2><p>Registre execuções, cancelamentos e coletas após a ação no jogo.</p></div>
+        <span id="slot-label" class="status">— slots</span>
+      </div>
+      <div id="offers-list"></div>
+      <div class="panel-head divider"><div><h2>Estoque</h2><p>Lotes comprados pelo custo original.</p></div></div>
+      <div id="positions-list"></div>
+    </section>
+
+    <section class="panel" id="historico" aria-labelledby="history-heading" hidden>
+      <div class="panel-head">
+        <div><h2 id="history-heading">Execuções registradas</h2><p>Compras e vendas registradas no painel.</p></div>
+        <a class="button secondary" id="export-trades" href="/api/exports/trades.csv" download>Exportar CSV</a>
+      </div>
+      <div id="trade-history"></div>
+    </section>
+
+    <footer class="footer">
+      <span>Merch RS3 · Painel local</span>
+      <a href="https://prices.runescape.wiki/rs" target="_blank" rel="noreferrer">Preços da RuneScape Wiki ↗</a>
+    </footer>
+  </main>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form">
+      <div class="dialog-head"><div><h2 id="settings-title">Configurações</h2><p>Base para o caixa e o tamanho dos flips.</p></div><button class="close" data-close type="button" aria-label="Fechar">×</button></div>
+      <div class="form-grid">
+        <label class="wide">Capital inicial<input name="capital" inputmode="text" maxlength="30" placeholder="Ex. 1B ou 300M" required autofocus><small>Aceita B, M, K e valores inteiros.</small></label>
+        <label>Perfil do GE<select name="profile"><option value="members">Membro (8 slots)</option><option value="free">Grátis (3 slots)</option></select></label>
+        <label>Teto por item (% do capital)<input name="allocation" type="number" min="1" max="100" required></label>
+      </div>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button class="button primary" type="submit">Salvar configurações</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="offer-dialog" aria-labelledby="offer-title">
+    <form id="offer-form">
+      <div class="dialog-head"><div><h2 id="offer-title">Registrar oferta</h2><p>Informe os dados da oferta que você colocou no GE.</p></div><button class="close" data-close type="button" aria-label="Fechar">×</button></div>
+      <div class="form-grid">
+        <label class="wide">Tipo<select name="side"><option value="buy">Compra</option><option value="sell">Venda</option></select></label>
+        <label class="wide" id="buy-field">Item da compra<input name="name" maxlength="120" placeholder="Nome do item no jogo" autocomplete="off" autofocus></label>
+        <label class="wide" id="sell-field" hidden>Item do estoque<select name="itemKey"></select></label>
+        <label>Quantidade<input name="qty" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label>Preço da oferta por unidade<input name="price" inputmode="numeric" pattern="[0-9]+" required></label>
+      </div>
+      <p id="offer-hint" class="form-hint"></p>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button class="button primary" type="submit">Salvar oferta</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="fill-dialog" aria-labelledby="fill-title">
+    <form id="fill-form">
+      <div class="dialog-head"><div><h2 id="fill-title">Registrar execução</h2><p id="fill-description"></p></div><button class="close" data-close type="button" aria-label="Fechar">×</button></div>
+      <div class="form-grid">
+        <label>Quantidade executada<input name="qty" inputmode="numeric" pattern="[0-9]+" required autofocus></label>
+        <label>Preço executado por unidade<input name="price" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label id="fee-field" class="wide">Tarifa total observada<input name="fee" inputmode="numeric" pattern="[0-9]+"><small>O painel calcula a tarifa padrão se o campo estiver vazio.</small></label>
+      </div>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button class="button primary" type="submit">Salvar execução</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="detail-dialog" class="detail" aria-labelledby="detail-title">
+    <div class="dialog-head"><div><p class="eyebrow" id="detail-kicker">Calculadora de flip</p><h2 id="detail-title">Planejar flip</h2><p id="detail-reason"></p></div><button class="close" data-close type="button" aria-label="Fechar">×</button></div>
+    <div id="market-detail">
+      <div id="quote-labels" class="quote-labels"></div>
+      <div class="chart-card">
+        <div class="chart-head"><strong>Execuções nas últimas 24 h</strong><span><i class="legend high"></i> Compra instantânea <i class="legend low"></i> Venda instantânea</span></div>
+        <canvas id="chart" height="154" role="img" aria-label="Gráfico de preços de compras e vendas instantâneas nas últimas 24 horas" hidden></canvas>
+        <p id="chart-status" role="status">Carregando histórico…</p>
+      </div>
+    </div>
+    <form id="calculator-form">
+      <div class="form-grid calculator-inputs">
+        <label>Entrada por unidade<input name="buy" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label>Saída por unidade<input name="sell" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label>Quantidade<input name="qty" inputmode="numeric" pattern="[0-9]+" value="1" required></label>
+      </div>
+      <label id="exempt-field" class="checkbox"><input name="exempt" type="checkbox"> Isento da tarifa (Bond)</label>
+      <div id="calculation" class="calc-grid" aria-live="polite"></div>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="button secondary" id="copy-flip-buy" type="button">Copiar compra</button>
+        <button class="button secondary" id="copy-flip-sell" type="button">Copiar venda</button>
+        <button class="button secondary" id="watch-item" type="button" hidden>Favoritar</button>
+        <button class="button primary" id="plan-offer" type="button" hidden>Preencher registro de compra</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="craft-dialog" class="detail" aria-labelledby="craft-title">
+    <div class="dialog-head"><div><p class="eyebrow">Crafting</p><h2 id="craft-title"></h2><p id="craft-route"></p></div><button class="close" data-close type="button" aria-label="Fechar">×</button></div>
+    <form id="craft-form">
+      <p id="craft-requirements" class="craft-requirements"></p>
+      <ul id="craft-notes" class="craft-notes"></ul>
+      <div class="table-wrap craft-inputs">
+        <table aria-label="Insumos da receita">
+          <thead><tr><th>Insumo</th><th>Por peça</th><th>Compra por unidade</th></tr></thead>
+          <tbody id="craft-inputs"></tbody>
+        </table>
+      </div>
+      <div class="form-grid calculator-inputs">
+        <label>Quantidade de peças<input name="qty" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label>Venda por peça<input name="sell" inputmode="numeric" pattern="[0-9]+" required></label>
+        <label>Custo extra por peça<input name="extra" inputmode="numeric" pattern="[0-9]+" value="0" required></label>
+      </div>
+      <p id="craft-sale-reference" class="form-hint"></p>
+      <div id="craft-results" class="calc-grid" aria-live="polite"></div>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <a class="button secondary" id="craft-wiki" href="https://runescape.wiki/" target="_blank" rel="noreferrer">Conferir receita na Wiki ↗</a>
+        <button class="button secondary" id="copy-craft-sell" type="button">Copiar venda</button>
+        <button class="button primary" type="submit">Recalcular</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
